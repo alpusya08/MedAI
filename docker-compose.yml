@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: medai-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: medai_db
+      POSTGRES_USER: medai_user
+      POSTGRES_PASSWORD: medai_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+#      - ./src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - medai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medai_user -d medai_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  medai-network:
+    driver: bridge
