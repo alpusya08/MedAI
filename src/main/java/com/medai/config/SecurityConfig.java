@@ -16,6 +16,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -25,6 +26,7 @@ public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -48,26 +50,29 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                                // Публичные endpoints
-                                .requestMatchers("/api/auth/**").permitAll()
-                                .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                                .requestMatchers("/error").permitAll()
+                        // Публичные endpoints
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/error").permitAll()
 
-                                // Endpoints для пациентов
-                                .requestMatchers("/api/patients/**").hasRole("PATIENT")
+                        // Endpoints для пациентов
+                        .requestMatchers("/api/patients/**").hasRole("PATIENT")
 
-                                // Endpoints для врачей
-                                .requestMatchers("/api/doctors/**").hasAnyRole("DOCTOR", "ADMIN")
+                        // Endpoints для врачей
+                        .requestMatchers("/api/doctors/**").hasAnyRole("DOCTOR", "ADMIN")
 
-                                // Endpoints для администраторов
-                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // Endpoints для администраторов
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                                // Все остальные запросы требуют аутентификации
+                        // Endpoints для проверка состояния
+                        .requestMatchers("/api/health").permitAll()
+
+                        // Все остальные запросы требуют аутентификации
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

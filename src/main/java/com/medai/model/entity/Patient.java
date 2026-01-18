@@ -24,7 +24,7 @@ public class Patient {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime dateOfBirth;
 
     @Column(length = 20)

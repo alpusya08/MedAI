@@ -24,10 +24,10 @@ public class Doctor {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(length = 100, nullable = false)
+    @Column(length = 100)
     private String specialization;
 
-    @Column(length = 50, nullable = false)
+    @Column(length = 50)
     private String licenceNumber;
 
     @Column(nullable = false)
@@ -45,10 +45,10 @@ public class Doctor {
     @Column(columnDefinition = "TEXT")
     private String clinicAddress;
 
-    @Column(nullable = false)
+    @Column
     private Boolean acceptsOnlineAppointments;
 
-    @Column(nullable = false)
+    @Column
     private Boolean acceptsOfflineAppointments;
 
     @Column

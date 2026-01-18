@@ -6,6 +6,7 @@ import com.medai.dto.response.AuthResponse;
 import com.medai.exception.BadRequestException;
 import com.medai.exception.UnauthorizedException;
 import com.medai.model.entity.User;
+import com.medai.model.enums.UserRole;
 import com.medai.repository.UserRepository;
 import com.medai.security.JwtTokenProvider;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +29,8 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
+    private final PatientService patientService;
+    private final DoctorService doctorService;
 
     public AuthResponse register(RegisterRequest request) throws BadRequestException {
         log.info("Registering new user with email: {}", request.getEmail());
@@ -48,6 +51,12 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         log.info("User registered successfully with ID: {}", savedUser.getId());
+
+        if (request.getRole() == UserRole.PATIENT) {
+            patientService.createPatientProfile(savedUser.getId());
+        } else if  (request.getRole() == UserRole.DOCTOR) {
+            doctorService.createDoctorProfile(savedUser.getId());
+        }
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
