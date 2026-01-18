@@ -4,6 +4,7 @@ import com.medai.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -16,7 +17,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -26,7 +26,6 @@ public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -50,29 +49,40 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .cors(cors -> cors.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // Публичные endpoints
+                        // Публичные endpoints (без токена)
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/error").permitAll()
+
+                        // Публичные GET запросы к врачам
+                        .requestMatchers(HttpMethod.GET, "/api/doctors").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/doctors/search").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/doctors/specialization/**").permitAll()
+
+                        // Профиль врача (только для врача)
+                        .requestMatchers(HttpMethod.GET, "/api/doctors/profile").hasAnyRole("DOCTOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/doctors/profile").hasAnyRole("DOCTOR", "ADMIN")
 
                         // Endpoints для пациентов
                         .requestMatchers("/api/patients/**").hasRole("PATIENT")
 
-                        // Endpoints для врачей
-                        .requestMatchers("/api/doctors/**").hasAnyRole("DOCTOR", "ADMIN")
+                        // Appointments
+                        .requestMatchers(HttpMethod.POST, "/api/appointments").hasRole("PATIENT")
+                        .requestMatchers(HttpMethod.GET, "/api/appointments/my").hasAnyRole("PATIENT", "DOCTOR")
+                        .requestMatchers(HttpMethod.GET, "/api/appointments/{id}").hasAnyRole("PATIENT", "DOCTOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/appointments/{id}/confirm").hasAnyRole("DOCTOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/appointments/{id}/complete").hasAnyRole("DOCTOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/appointments/{id}/cancel").hasAnyRole("PATIENT", "DOCTOR", "ADMIN")
 
-                        // Endpoints для администраторов
+                        // Админ панель
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // Endpoints для проверка состояния
-                        .requestMatchers("/api/health").permitAll()
-
-                        // Все остальные запросы требуют аутентификации
+                        // Все остальное требует аутентификации
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

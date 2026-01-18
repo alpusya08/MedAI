@@ -16,10 +16,13 @@ import com.medai.repository.AppointmentRepository;
 import com.medai.repository.DoctorRepository;
 import com.medai.repository.PatientRepository;
 import com.medai.repository.UserRepository;
+import com.medai.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,6 +37,7 @@ public class AppointmentService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
+    private final SecurityUtils securityUtils;
 
     public AppointmentResponse createAppointment(Long patientUserId, CreateAppointmentRequest request) {
 
@@ -99,6 +103,32 @@ public class AppointmentService {
         } else {
             throw new BadRequestException("Invalid user role for appointments");
         }
+    }
+
+    public AppointmentResponse getAppointmentById(Long userId, Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        boolean hasAccess = false;
+
+        if (user.getRole() == UserRole.PATIENT) {
+            Patient patient = patientRepository.findByUserId(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Patient not found"));
+            hasAccess = appointment.getPatient().getId().equals(patient.getId());
+        } else if (user.getRole() == UserRole.DOCTOR) {
+            Doctor doctor = doctorRepository.findByUserId(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Doctor not found"));
+            hasAccess = appointment.getDoctor().getId().equals(doctor.getId());
+        }
+
+        if (!hasAccess) {
+            throw new BadRequestException("You don't have permission to view this appointment");
+        }
+
+        return mapToResponse(appointment);
     }
 
     public List<AppointmentResponse> getPatientAppointments(Long patientUserId) {

@@ -40,6 +40,13 @@ public class AppointmentController {
         return ResponseEntity.ok(appointments);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<AppointmentResponse> getAppointmentById(Authentication authentication, @PathVariable Long id) {
+        Long userId = securityUtils.getCurrentUserId(authentication);
+        AppointmentResponse response = appointmentService.getAppointmentById(userId, id);
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{id}/confirm")
     public ResponseEntity<AppointmentResponse> confirmAppointment(Authentication authentication, @PathVariable Long id) {
         Long userId = securityUtils.getCurrentUserId(authentication);
