@@ -33,6 +33,11 @@ public class AuthService {
     private final DoctorService doctorService;
 
     public AuthResponse register(RegisterRequest request) throws BadRequestException {
+
+        if (request.getRole() == UserRole.ADMIN) {
+            throw new BadRequestException("Cannot register with ADMIN role");
+        }
+
         log.info("Registering new user with email: {}", request.getEmail());
 
         if (userRepository.existsByEmail(request.getEmail())) {

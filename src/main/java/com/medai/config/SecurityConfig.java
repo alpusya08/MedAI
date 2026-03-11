@@ -84,6 +84,9 @@ public class SecurityConfig {
                         // Админ панель
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+
                         // Все остальное требует аутентификации
                         .anyRequest().authenticated()
                 )
