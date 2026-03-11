@@ -51,7 +51,7 @@ public class User {
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
 }
