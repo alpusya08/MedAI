@@ -26,6 +26,10 @@ public class Appointment {
     @JoinColumn(name = "doctor_id", nullable = false)
     private Doctor doctor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ai_analysis_id")
+    private AiAnalysis aiAnalysis;
+
     @Column(nullable = false)
     private LocalDateTime appointmentDateTime;  // Дата и время приема
 

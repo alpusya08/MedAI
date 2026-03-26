@@ -23,4 +23,6 @@ public class CreateAppointmentRequest {
 
     @Size(max = 1000, message = "Reason must be less than 1000 characters")
     private String reasonForVisit;
+
+    private Long aiAnalysisId;
 }

@@ -21,6 +21,8 @@ public class AppointmentResponse {
     private String doctorName;
     private String doctorSpecialization;
 
+    private Long aiAnalysisId;
+
     // Appointment details
     private LocalDateTime appointmentDateTime;
     private AppointmentType type;

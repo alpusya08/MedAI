@@ -154,6 +154,7 @@ public class AdminService {
                 appointment.getDoctor().getId(),
                 appointment.getDoctor().getUser().getFirstName() + " " + appointment.getDoctor().getUser().getLastName(),
                 appointment.getDoctor().getSpecialization(),
+                appointment.getAiAnalysis() != null ? appointment.getAiAnalysis().getId() : null,
                 appointment.getAppointmentDateTime(),
                 appointment.getType(),
                 appointment.getStatus(),

@@ -12,10 +12,7 @@ import com.medai.model.entity.User;
 import com.medai.model.enums.AppointmentStatus;
 import com.medai.model.enums.AppointmentType;
 import com.medai.model.enums.UserRole;
-import com.medai.repository.AppointmentRepository;
-import com.medai.repository.DoctorRepository;
-import com.medai.repository.PatientRepository;
-import com.medai.repository.UserRepository;
+import com.medai.repository.*;
 import com.medai.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +34,7 @@ public class AppointmentService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
-    private final SecurityUtils securityUtils;
+    private final AiAnalysisRepository aiAnalysisRepository;
 
     public AppointmentResponse createAppointment(Long patientUserId, CreateAppointmentRequest request) {
 
@@ -56,11 +53,11 @@ public class AppointmentService {
         }
 
         if (request.getType() == AppointmentType.ONLINE && !doctor.getAcceptsOnlineAppointments()) {
-            throw new  BadRequestException("Doctor doesn't accepts online appointments");
+            throw new BadRequestException("Doctor doesn't accept online appointments");
         }
 
         if (request.getType() == AppointmentType.OFFLINE && !doctor.getAcceptsOfflineAppointments()) {
-            throw new  BadRequestException("Doctor doesn't accepts offline appointments");
+            throw new BadRequestException("Doctor doesn't accept offline appointments");
         }
 
         Appointment appointment = new Appointment();
@@ -72,10 +69,14 @@ public class AppointmentService {
         appointment.setReasonForVisit(request.getReasonForVisit());
         appointment.setFee(doctor.getConsultationFee());
 
-        Appointment savedAppointment = appointmentRepository.save(appointment);
-        log.info("Appointment created with ID: {}", savedAppointment.getId());
+        if (request.getAiAnalysisId() != null) {
+            aiAnalysisRepository.findById(request.getAiAnalysisId())
+                    .ifPresent(appointment::setAiAnalysis);
+        }
 
-        return mapToResponse(savedAppointment);
+        Appointment saved = appointmentRepository.save(appointment);
+        log.info("Appointment created id={}", saved.getId());
+        return mapToResponse(saved);
     }
 
     public List<AppointmentResponse> getMyAppointments(Long userId) {
@@ -230,6 +231,7 @@ public class AppointmentService {
                 appointment.getDoctor().getUser().getFirstName() + " " +
                         appointment.getDoctor().getUser().getLastName(),
                 appointment.getDoctor().getSpecialization(),
+                appointment.getAiAnalysis() != null ? appointment.getAiAnalysis().getId() : null,
                 appointment.getAppointmentDateTime(),
                 appointment.getType(),
                 appointment.getStatus(),

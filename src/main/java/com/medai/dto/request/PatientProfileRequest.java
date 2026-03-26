@@ -2,11 +2,11 @@ package com.medai.dto.request;
 
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Data
 public class PatientProfileRequest {
-    private LocalDateTime dateOfBirth;
+    private LocalDate dateOfBirth;
     private String gender;
     private String bloodType;
     private String address;

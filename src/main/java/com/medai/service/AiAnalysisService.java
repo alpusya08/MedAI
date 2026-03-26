@@ -6,10 +6,13 @@ import com.medai.client.AiClient;
 import com.medai.dto.request.AiAnalysisRequest;
 import com.medai.dto.response.AiAnalysisResponse;
 import com.medai.dto.response.AiAnalysisResultResponse;
+import com.medai.dto.response.DoctorShortResponse;
 import com.medai.exception.ResourceNotFoundException;
 import com.medai.model.entity.AiAnalysis;
+import com.medai.model.entity.Doctor;
 import com.medai.model.entity.Patient;
 import com.medai.repository.AiAnalysisRepository;
+import com.medai.repository.DoctorRepository;
 import com.medai.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +32,7 @@ public class AiAnalysisService {
     private final AiClient aiClient;
     private final AiAnalysisRepository aiAnalysisRepository;
     private final PatientRepository patientRepository;
+    private final DoctorRepository doctorRepository;
     private final ObjectMapper objectMapper;
 
     public AiAnalysisResultResponse analyze(Long userId, AiAnalysisRequest request) {
@@ -36,16 +40,16 @@ public class AiAnalysisService {
         Patient patient = patientRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
 
-        // 2. Автоматически подставляем age и sex из профиля если не переданы
+        // 2. Подставляем age и sex из профиля если не переданы
         if (request.getAge() == null && patient.getDateOfBirth() != null) {
-            int age = Period.between(patient.getDateOfBirth().toLocalDate(), LocalDate.now()).getYears();
+            int age = Period.between(patient.getDateOfBirth(), LocalDate.now()).getYears();
             request.setAge(age);
         }
         if (request.getSex() == null && patient.getGender() != null) {
             request.setSex(patient.getGender());
         }
 
-        // 3. Сохраняем входные данные в БД
+        // 3. Сохраняем входные данные
         AiAnalysis analysis = new AiAnalysis();
         analysis.setPatient(patient);
         analysis.setAge(request.getAge());
@@ -67,7 +71,7 @@ public class AiAnalysisService {
         // 4. Вызываем Python AI сервис
         AiAnalysisResponse aiResponse = aiClient.analyze(request);
 
-        // 5. Сохраняем результат в ту же запись
+        // 5. Сохраняем результат
         analysis.setRiskLevel(aiResponse.getRiskLevel());
         analysis.setConfidenceLevel(aiResponse.getConfidenceLevel());
         analysis.setPrediction(aiResponse.getPrediction());
@@ -80,9 +84,14 @@ public class AiAnalysisService {
         analysis.setRecommendedTests(toJson(aiResponse.getRecommendedTests()));
         aiAnalysisRepository.save(analysis);
 
-        log.info("AI analysis saved with id: {} for patient: {}", analysis.getId(), patient.getId());
+        log.info("AI analysis saved id={} patient={}", analysis.getId(), patient.getId());
 
-        return mapToResultResponse(analysis, aiResponse);
+        // 6. Подбираем подходящих врачей по специализации из AI-ответа
+        List<DoctorShortResponse> suggestedDoctors = findSuggestedDoctors(aiResponse.getRecommendedSpecialists());
+
+        AiAnalysisResultResponse result = mapToResultResponse(analysis, aiResponse);
+        result.setSuggestedDoctors(suggestedDoctors);
+        return result;
     }
 
     public List<AiAnalysisResultResponse> getHistory(Long userId) {
@@ -101,6 +110,40 @@ public class AiAnalysisService {
         return mapToResultResponse(analysis, null);
     }
 
+    // Находим верифицированных врачей по специализации из AI-рекомендации
+    private List<DoctorShortResponse> findSuggestedDoctors(List<String> recommendedSpecialists) {
+        if (recommendedSpecialists == null || recommendedSpecialists.isEmpty()) {
+            return List.of();
+        }
+        // AI возвращает "Cardiologist" — ищем по этому слову
+        String specialization = recommendedSpecialists.get(0);
+        List<Doctor> doctors = doctorRepository.findBySpecializationContainingIgnoreCaseAndVerifiedTrue(specialization);
+        if (doctors.isEmpty()) {
+            // Fallback: берём топ-5 верифицированных по рейтингу
+            doctors = doctorRepository.findByVerifiedTrueOrderByRatingDesc()
+                    .stream()
+                    .limit(5)
+                    .toList();
+        }
+        return doctors.stream().map(this::mapToDoctorShort).toList();
+    }
+
+    private DoctorShortResponse mapToDoctorShort(Doctor doctor) {
+        return new DoctorShortResponse(
+                doctor.getId(),
+                doctor.getUser().getFirstName(),
+                doctor.getUser().getLastName(),
+                doctor.getSpecialization(),
+                doctor.getClinicName(),
+                doctor.getYearsOfExperience(),
+                doctor.getRating(),
+                doctor.getConsultationFee(),
+                doctor.getAcceptsOnlineAppointments(),
+                doctor.getAcceptsOfflineAppointments(),
+                doctor.getVerified()
+        );
+    }
+
     private AiAnalysisResultResponse mapToResultResponse(AiAnalysis analysis, AiAnalysisResponse aiResponse) {
         AiAnalysisResultResponse response = new AiAnalysisResultResponse();
         response.setId(analysis.getId());
@@ -113,7 +156,6 @@ public class AiAnalysisService {
         response.setRecommendedSpecialists(fromJson(analysis.getRecommendedSpecialists()));
         response.setRecommendedTests(fromJson(analysis.getRecommendedTests()));
         response.setCreatedAt(analysis.getCreatedAt());
-
         if (aiResponse != null) {
             response.setDisclaimer(aiResponse.getDisclaimer());
         }

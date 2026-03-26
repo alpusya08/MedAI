@@ -14,6 +14,7 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
     Optional<Doctor> findByUserId(Long userId);
     List<Doctor> findBySpecialization(String specialization);
     List<Doctor> findByVerifiedTrueOrderByRatingDesc();
+    List<Doctor> findBySpecializationContainingIgnoreCaseAndVerifiedTrue(String specialization);
     @Query("SELECT d FROM Doctor d JOIN d.user u WHERE " +
             "(LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +

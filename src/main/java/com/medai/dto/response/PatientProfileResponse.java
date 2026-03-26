@@ -3,7 +3,7 @@ package com.medai.dto.response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
@@ -14,7 +14,7 @@ public class PatientProfileResponse {
     private String firstName;
     private String lastName;
     private String phoneNumber;
-    private LocalDateTime dateOfBirth;
+    private LocalDate dateOfBirth;
     private String gender;
     private String bloodType;
     private String address;

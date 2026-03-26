@@ -44,6 +44,7 @@ public class DoctorService {
         doctor.setAcceptsOnlineAppointments(true);
         doctor.setAcceptsOfflineAppointments(true);
         doctor.setRating(0.0);
+        doctor.setYearsOfExperience(0);
 
         Doctor savedDoctor = doctorRepository.save(doctor);
         log.info("Doctor profile created with ID: {}", savedDoctor.getId());
@@ -108,9 +109,6 @@ public class DoctorService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Маппинг Doctor -> DoctorProfileResponse
-     */
     private DoctorProfileResponse mapToResponse(Doctor doctor) {
         return new DoctorProfileResponse(
                 doctor.getId(),
@@ -129,11 +127,11 @@ public class DoctorService {
                 doctor.getConsultationFee(),
                 doctor.getAcceptsOnlineAppointments(),
                 doctor.getAcceptsOfflineAppointments(),
-                doctor.getRating(),
-                0,  // totalReviews - TODO: посчитать из таблицы reviews
-                0,  // totalAppointments - TODO: посчитать из таблицы appointments
+                doctor.getRating() != null ? doctor.getRating() : 0.0,
+                doctor.getTotalReviews() != null ? doctor.getTotalReviews() : 0,
+                0,
                 doctor.getVerified(),
-                true,  // active - TODO: добавить поле в entity
+                doctor.getUser().getEnabled(),
                 doctor.getCreatedAt(),
                 doctor.getUpdatedAt()
         );

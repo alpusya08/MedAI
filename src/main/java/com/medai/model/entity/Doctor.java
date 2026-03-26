@@ -30,7 +30,7 @@ public class Doctor {
     @Column(length = 50)
     private String licenceNumber;
 
-    @Column(nullable = false)
+    @Column
     private Integer yearsOfExperience;
 
     @Column(columnDefinition = "TEXT")
@@ -67,6 +67,6 @@ public class Doctor {
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(updatable = false, nullable = false)
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 }
