@@ -21,4 +21,5 @@ public class AiAnalysisResultResponse {
     private List<String> recommendedTests;
     private LocalDateTime createdAt;
     private List<DoctorShortResponse> suggestedDoctors;
+    private AiFeedbackResponse doctorFeedback;
 }

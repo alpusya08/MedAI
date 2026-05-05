@@ -72,6 +72,12 @@ public class SecurityConfig {
 
                         // Endpoints для пациентов
                         .requestMatchers("/api/patients/**").hasRole("PATIENT")
+                        .requestMatchers("/api/questionnaire/**").hasRole("PATIENT")
+                        .requestMatchers("/api/documents/**").hasRole("PATIENT")
+
+                        // AI endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/ai/patient/**").hasAnyRole("DOCTOR", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/ai/*/feedback").hasRole("DOCTOR")
                         .requestMatchers("/api/ai/**").hasAnyRole("PATIENT", "DOCTOR")
 
                         // Appointments

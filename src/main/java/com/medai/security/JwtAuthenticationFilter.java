@@ -40,6 +40,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
+                if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
+                    log.warn("Rejected request from disabled/locked user: {}", email);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,

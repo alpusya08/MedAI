@@ -4,14 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.medai.client.AiClient;
 import com.medai.dto.request.AiAnalysisRequest;
+import com.medai.dto.request.AiFeedbackRequest;
 import com.medai.dto.response.AiAnalysisResponse;
 import com.medai.dto.response.AiAnalysisResultResponse;
+import com.medai.dto.response.AiFeedbackResponse;
 import com.medai.dto.response.DoctorShortResponse;
+import com.medai.exception.BadRequestException;
 import com.medai.exception.ResourceNotFoundException;
 import com.medai.model.entity.AiAnalysis;
 import com.medai.model.entity.Doctor;
+import com.medai.model.entity.DoctorFeedback;
 import com.medai.model.entity.Patient;
 import com.medai.repository.AiAnalysisRepository;
+import com.medai.repository.DoctorFeedbackRepository;
 import com.medai.repository.DoctorRepository;
 import com.medai.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +38,7 @@ public class AiAnalysisService {
     private final AiAnalysisRepository aiAnalysisRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
+    private final DoctorFeedbackRepository doctorFeedbackRepository;
     private final ObjectMapper objectMapper;
 
     public AiAnalysisResultResponse analyze(Long userId, AiAnalysisRequest request) {
@@ -110,6 +116,49 @@ public class AiAnalysisService {
         return mapToResultResponse(analysis, null);
     }
 
+    public List<AiAnalysisResultResponse> getByPatientId(Long patientId) {
+        return aiAnalysisRepository.findByPatientIdOrderByCreatedAtDesc(patientId)
+                .stream()
+                .map(a -> mapToResultResponse(a, null))
+                .toList();
+    }
+
+    public AiFeedbackResponse submitFeedback(Long userId, Long analysisId, AiFeedbackRequest request) {
+        AiAnalysis analysis = aiAnalysisRepository.findById(analysisId)
+                .orElseThrow(() -> new ResourceNotFoundException("Analysis not found"));
+
+        if (doctorFeedbackRepository.existsByAiAnalysisId(analysisId)) {
+            throw new BadRequestException("Feedback for this analysis already exists");
+        }
+
+        Doctor doctor = doctorRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor profile not found"));
+
+        DoctorFeedback feedback = new DoctorFeedback();
+        feedback.setAiAnalysis(analysis);
+        feedback.setDoctor(doctor);
+        feedback.setFeedbackType(request.getFeedbackType());
+        feedback.setNotes(request.getNotes());
+        feedback.setFinalDiagnosis(request.getFinalDiagnosis());
+        doctorFeedbackRepository.save(feedback);
+
+        log.info("Doctor {} submitted feedback for analysis {}: {}", doctor.getId(), analysisId, request.getFeedbackType());
+        return mapFeedbackToResponse(feedback);
+    }
+
+    private AiFeedbackResponse mapFeedbackToResponse(DoctorFeedback f) {
+        AiFeedbackResponse resp = new AiFeedbackResponse();
+        resp.setId(f.getId());
+        resp.setAnalysisId(f.getAiAnalysis().getId());
+        resp.setDoctorId(f.getDoctor().getId());
+        resp.setDoctorName(f.getDoctor().getUser().getFirstName() + " " + f.getDoctor().getUser().getLastName());
+        resp.setFeedbackType(f.getFeedbackType());
+        resp.setNotes(f.getNotes());
+        resp.setFinalDiagnosis(f.getFinalDiagnosis());
+        resp.setCreatedAt(f.getCreatedAt());
+        return resp;
+    }
+
     // Находим верифицированных врачей по специализации из AI-рекомендации
     private List<DoctorShortResponse> findSuggestedDoctors(List<String> recommendedSpecialists) {
         if (recommendedSpecialists == null || recommendedSpecialists.isEmpty()) {
@@ -158,6 +207,9 @@ public class AiAnalysisService {
         response.setCreatedAt(analysis.getCreatedAt());
         if (aiResponse != null) {
             response.setDisclaimer(aiResponse.getDisclaimer());
+        }
+        if (analysis.getDoctorFeedback() != null) {
+            response.setDoctorFeedback(mapFeedbackToResponse(analysis.getDoctorFeedback()));
         }
         return response;
     }

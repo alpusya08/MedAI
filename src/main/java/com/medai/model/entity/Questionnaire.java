@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @NoArgsConstructor
-@Table(name = "ai_analyses")
-public class AiAnalysis {
+@Table(name = "questionnaires")
+public class Questionnaire {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,14 +21,7 @@ public class AiAnalysis {
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "questionnaire_id")
-    private Questionnaire questionnaire;
-
-    @OneToOne(mappedBy = "aiAnalysis", fetch = FetchType.LAZY)
-    private DoctorFeedback doctorFeedback;
-
-    // --- Входные данные от пациента ---
+    // --- Клинические поля для AI (UCI Heart Disease) ---
     private Integer age;
     private String sex;
     private String dataset;
@@ -44,27 +37,48 @@ public class AiAnalysis {
     private Integer ca;
     private String thal;
 
-    // --- Результат от Python AI ---
-    private String riskLevel;
-    private Double confidenceLevel;
-    private Integer prediction;
-    private Double thresholdUsed;
-    private String modelVersion;
+    // --- Симптомы пациента ---
+    private Boolean shortnessOfBreath;
+    private Boolean shortnessAtRest;
+    private Boolean shortnessAtActivity;
+    private Boolean palpitations;
+    private Boolean dizziness;
+    private Boolean swelling;
+
+    // --- Временные характеристики ---
+    @Column(columnDefinition = "TEXT")
+    private String symptomDuration;
 
     @Column(columnDefinition = "TEXT")
-    private String urgency;
+    private String symptomFrequency;
 
     @Column(columnDefinition = "TEXT")
-    private String explanation;
+    private String triggers;
+
+    // --- Анамнез ---
+    private Boolean previousCvd;
 
     @Column(columnDefinition = "TEXT")
-    private String possibleConditions;      // JSON: ["condition1", "condition2"]
+    private String cvdHistory;
+
+    private Boolean familyHistoryCvd;
 
     @Column(columnDefinition = "TEXT")
-    private String recommendedSpecialists;  // JSON: ["Cardiologist"]
+    private String chronicDiseases;
 
     @Column(columnDefinition = "TEXT")
-    private String recommendedTests;        // JSON: ["ECG", "Lipid profile"]
+    private String medications;
+
+    // --- Факторы риска ---
+    private Boolean smoking;
+    private String physicalActivity;
+    private Double bmi;
+
+    @Column(columnDefinition = "TEXT")
+    private String additionalNotes;
+
+    @OneToOne(mappedBy = "questionnaire", fetch = FetchType.LAZY)
+    private AiAnalysis aiAnalysis;
 
     @CreationTimestamp
     @Column(updatable = false, nullable = false)

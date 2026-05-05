@@ -10,6 +10,8 @@ import com.medai.model.enums.UserRole;
 import com.medai.repository.UserRepository;
 import com.medai.security.JwtTokenProvider;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
@@ -31,6 +33,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final PatientService patientService;
     private final DoctorService doctorService;
+    private final UserDetailsService userDetailsService;
 
     public AuthResponse register(RegisterRequest request) throws BadRequestException {
 
@@ -75,9 +78,9 @@ public class AuthService {
         return new AuthResponse(
                 token,
                 savedUser.getId(),
-                savedUser.getEmail(),
                 savedUser.getFirstName(),
                 savedUser.getLastName(),
+                savedUser.getEmail(),
                 savedUser.getRole()
         );
     }
@@ -110,9 +113,9 @@ public class AuthService {
         return new AuthResponse(
                 token,
                 user.getId(),
-                user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getEmail(),
                 user.getRole()
         );
     }
@@ -130,18 +133,23 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
+        if (!user.getEnabled() || !user.getAccountNonLocked()) {
+            throw new UnauthorizedException("Account is disabled or locked");
+        }
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
         Authentication authentication = new UsernamePasswordAuthenticationToken(
-                email, null, null
+                userDetails, null, userDetails.getAuthorities()
         );
 
-        String newToken =  jwtTokenProvider.generateToken(authentication);
+        String newToken = jwtTokenProvider.generateToken(authentication);
 
         return new AuthResponse(
                 newToken,
                 user.getId(),
-                user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getEmail(),
                 user.getRole()
         );
     }
